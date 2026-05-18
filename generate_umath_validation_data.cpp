@@ -4,18 +4,18 @@
 #include <vector>
 #include <string>
 
-// ── ESTRUCTURA ────────────────────────────────────────────────────────────────
-// rigor: escala del 1 al 10
-//   1-3  → baja exigencia formal
-//   4-6  → exigencia media
-//   7-9  → alta exigencia
-//   10   → máxima exigencia (ej. Cálculo, Trigonometría)
+// ── STRUCTURE ─────────────────────────────────────────────────────────────────
+// rigor: scale from 1 to 10
+//   1-3  → low formal rigor
+//   4-6  → medium rigor
+//   7-9  → high rigor
+//   10   → maximum rigor (e.g. Calculus, Trigonometry)
 struct Subject {
     std::string              name;
     std::string              relatedTo;
     std::string              description;
     std::string              difficulty;
-    int                      rigor;        // rango 1–10
+    int                      rigor;        // range 1–10
     std::string              prerequisites;
     std::vector<std::string> themes;
     double      (*f32func)(double)            = nullptr;
@@ -24,7 +24,7 @@ struct Subject {
     float                    f64ulp           = 0.0f;
 };
 
-// ── HELPER: imprime un Subject ────────────────────────────────────────────────
+// ── HELPER: prints a Subject ──────────────────────────────────────────────────
 void printSubject(const Subject& s) {
     std::cout << "==============================\n";
     std::cout << "Subject      : " << s.name          << "\n";
@@ -44,20 +44,20 @@ void printSubject(const Subject& s) {
     std::cout << "\n";
 }
 
-// ── HELPER: muestra una nota según el nivel de rigor ─────────────────────────
+// ── HELPER: displays a note based on the rigor level ─────────────────────────
 void printRigorNote(const Subject& s) {
     if (s.rigor == 10) {
-        std::cout << "[!] " << s.name << " → rigor máximo: "
-                  << "requiere dominio sólido de fórmulas y pensamiento abstracto.\n";
+        std::cout << "[!] " << s.name << " → maximum rigor: "
+                  << "requires solid command of formulas and abstract thinking.\n";
     } else if (s.rigor >= 7) {
-        std::cout << "[!] " << s.name << " → rigor alto: "
-                  << "se esperan demostraciones y formulación precisa.\n";
+        std::cout << "[!] " << s.name << " → high rigor: "
+                  << "proofs and precise formulation are expected.\n";
     } else if (s.rigor >= 4) {
-        std::cout << "[~] " << s.name << " → rigor medio: "
-                  << "requiere comprensión conceptual pero menos formalidad.\n";
+        std::cout << "[~] " << s.name << " → medium rigor: "
+                  << "requires conceptual understanding but less formality.\n";
     } else {
-        std::cout << "[ ] " << s.name << " → rigor bajo: "
-                  << "enfocado en comprensión general.\n";
+        std::cout << "[ ] " << s.name << " → low rigor: "
+                  << "focused on general understanding.\n";
     }
 }
 
@@ -65,11 +65,11 @@ void printRigorNote(const Subject& s) {
 int main() {
     std::vector<Subject> listOfSubjects;
 
-    // ── MATH ─────────────────────────────────────────────────────────────────
+    // ── MATH ──────────────────────────────────────────────────────────────────
     Subject math;
     math.name          = "Math";
     math.relatedTo     = "Calculus";
-    math.rigor         = 8;            // alta exigencia, base formal sólida
+    math.rigor         = 8;            // high rigor, solid formal foundation
     math.description   = "Logical and numerical foundation of sciences";
     math.difficulty    = "VERY HIGH";
     math.prerequisites = "Basic Algebra, Trigonometry";
@@ -78,11 +78,11 @@ int main() {
     math.f64ulp        = 1.5f;
     listOfSubjects.push_back(math);
 
-    // ── CALCULUS ─────────────────────────────────────────────────────────────
+    // ── CALCULUS ──────────────────────────────────────────────────────────────
     Subject calculus;
     calculus.name          = "Calculus";
     calculus.relatedTo     = "Physics";
-    calculus.rigor         = 10;       // máximo rigor: límites, demostraciones epsilon-delta
+    calculus.rigor         = 10;       // maximum rigor: limits, epsilon-delta proofs
     calculus.description   = "Branch of math that studies change and accumulation";
     calculus.difficulty    = "HIGH";
     calculus.prerequisites = "Pre-Calculus, Math";
@@ -91,11 +91,11 @@ int main() {
     calculus.f64ulp        = 1.2f;
     listOfSubjects.push_back(calculus);
 
-    // ── TRIGONOMETRY ─────────────────────────────────────────────────────────
+    // ── TRIGONOMETRY ──────────────────────────────────────────────────────────
     Subject trigonometry;
     trigonometry.name          = "Trigonometry";
     trigonometry.relatedTo     = "Math";
-    trigonometry.rigor         = 10;   // máximo rigor: identidades, demostraciones, teorema de Pitágoras
+    trigonometry.rigor         = 10;   // maximum rigor: identities, proofs, Pythagorean theorem
     trigonometry.description   = "Study of relationships between angles and sides of triangles";
     trigonometry.difficulty    = "HIGH";
     trigonometry.prerequisites = "Basic Algebra, Geometry";
@@ -105,11 +105,11 @@ int main() {
     trigonometry.f64ulp        = 1.0f;
     listOfSubjects.push_back(trigonometry);
 
-    // ── PHYSICS ──────────────────────────────────────────────────────────────
+    // ── PHYSICS ───────────────────────────────────────────────────────────────
     Subject physics;
     physics.name          = "Physics";
     physics.relatedTo     = "Math";
-    physics.rigor         = 9;         // muy alto: requiere ecuaciones diferenciales
+    physics.rigor         = 9;         // very high: requires differential equations
     physics.description   = "Study of the fundamental laws of the universe and matter";
     physics.difficulty    = "HIGH";
     physics.prerequisites = "Calculus, Linear Algebra";
@@ -118,7 +118,7 @@ int main() {
     physics.f64ulp        = 2.0f;
     listOfSubjects.push_back(physics);
 
-    // ── IMPRIMIR TODA LA BASE DE DATOS ───────────────────────────────────────
+    // ── PRINT THE ENTIRE DATABASE ─────────────────────────────────────────────
     std::cout << "\n===== SUBJECT DATABASE =====\n\n";
     for (const Subject& s : listOfSubjects) {
         printSubject(s);
@@ -126,7 +126,7 @@ int main() {
         std::cout << "\n";
     }
 
-    // ── BUSCAR UN TEMA DENTRO DE TODAS LAS MATERIAS ──────────────────────────
+    // ── SEARCH FOR A THEME ACROSS ALL SUBJECTS ────────────────────────────────
     std::string targetTheme = "Limits";
     std::cout << ">> Searching theme: \"" << targetTheme << "\"\n";
 
@@ -144,7 +144,7 @@ int main() {
         std::cout << "   Theme not found in any subject.\n";
     }
 
-    // ── ORDENAR POR RIGOR (mayor a menor) ────────────────────────────────────
+    // ── SORT BY RIGOR (highest to lowest) ─────────────────────────────────────
     std::cout << "\n>> Subjects sorted by rigor (high → low):\n";
     std::vector<Subject> sorted = listOfSubjects;
     std::sort(sorted.begin(), sorted.end(),
