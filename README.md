@@ -2,7 +2,7 @@
 
 ## Project Description
 
-NeuroAgent is a local AI educational assistant designed to help teachers and instructional designers generate high-quality academic documents automatically. Given a subject, a pedagogical approach, and a learning objective, the system produces structured **lesson plans**, **syllabi**, and **curriculum maps** in Markdown, and exports them as **PDF** or **DOCX** files.
+NeuroAgent is a local AI educational assistant designed to help teachers and instructional designers generate high-quality academic documents automatically. Given a subject, a pedagogical approach, and a learning objective, the system produces structured **lesson plans**, **syllabi**,  and exports them as **PDF** or **DOCX** files.
 
 The agent is grounded by a structured knowledge base (`relationaldata.json`) that contains calculus topics, mathematical formulas, worked examples, and pedagogical methodologies (UDL, CRA, 3Rs). When a query is related to those topics, the backend injects this context directly into the LLM prompt, acting as a lightweight RAG (Retrieval-Augmented Generation) system without a vector database.
 
