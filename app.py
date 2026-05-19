@@ -1,6 +1,6 @@
 """
-- Agente educativo con Ollama  
-Backend Flask con generación de plan de clase, sílabo y malla curricular
+- Educational Agent with Ollama  
+Flask backend for generating lesson plans, syllabi, and curriculum maps
 """
 
 from flask import Flask, request, jsonify, send_file, render_template, send_from_directory
@@ -10,7 +10,7 @@ import re
 from datetime import datetime
 import os
 
-# Para exportar a DOCX y PDF
+# For exporting to DOCX and PDF
 try:
     from docx import Document
     from docx.shared import Pt, RGBColor, Inches
@@ -42,16 +42,16 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "gemma4:latest" 
 OUTPUT_DIR = "outputs"
 
-# Crear carpetas necesarias si no existen 
+# Create necessary folders if they don't exist
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
-# Configuración de Flask para encontrar tu index.html
+# Flask configuration to find your index.html
 app = Flask(__name__, template_folder='.') 
 CORS(app)
 
 # ─────────────────────────────────────────────
-# UTILIDADES OLLAMA
+# OLLAMA UTILITIES
 # ─────────────────────────────────────────────
 
 def query_ollama(prompt: str, system_prompt: str = "") -> str:
@@ -60,11 +60,11 @@ def query_ollama(prompt: str, system_prompt: str = "") -> str:
         "prompt": prompt,
         "system": system_prompt,
         "stream": False,
-        "context": [],  # <--- AÑADE ESTA LÍNEA para limpiar la memoria de la IA
+        "context": [],  # <--- ADD THIS LINE to clear the AI's memory
         "options": {
             "temperature": 0.4,
-            "num_thread": 4, # Usa hilos reales de tu PC
-            "num_ctx": 4096  # Limita el tamaño de la memoria de trabajo
+            "num_thread": 4, # Uses your PC's actual threads
+            "num_ctx": 4096  # Limits working memory size
         }
     }
     try:
@@ -79,113 +79,111 @@ def query_ollama(prompt: str, system_prompt: str = "") -> str:
 
 
 # ─────────────────────────────────────────────
-# PROMPTS DEL AGENTE
+# AGENT PROMPTS
 # ─────────────────────────────────────────────
 
-SYSTEM_BASE = """Eres EduAgent. Genera contenido pedagógico experto.
-REGLA CRÍTICA: Responde directamente con el formato Markdown. 
-No saludes, no expliques qué vas a hacer, no des introducciones. 
-Sé breve, técnico y directo en cada sección."""
+SYSTEM_BASE = """You are EduAgent. Generate expert pedagogical content.
+CRITICAL RULE: Respond directly with Markdown format.
+Do not greet, do not explain what you're going to do, do not give introductions.
+Be brief, technical, and direct in each section."""
 
 
-def prompt_plan_clase(tema: str, propuesta: str, aprendizaje: str, nivel: str, duracion: str) -> str:
-    return f"""Actúa como un Diseñador Instruccional experto. Tu tarea es crear un Plan de Clase de ALTO IMPACTO.
+def prompt_lesson_plan(topic: str, approach: str, learning: str, level: str, duration: str) -> str:
+    return f"""Act as an expert Instructional Designer. Your task is to create a HIGH-IMPACT Lesson Plan.
 
-DATOS CLAVE:
-- TEMA: {tema}
-- ENFOQUE: {propuesta}
-- OBJETIVO: {aprendizaje}
-- NIVEL: {nivel}
-- TIEMPO: {duracion}
+KEY DATA:
+- TOPIC: {topic}
+- APPROACH: {approach}
+- OBJECTIVE: {learning}
+- LEVEL: {level}
+- TIME: {duration}
 
-INSTRUCCIONES DE FORMATO:
-1. Usa Markdown con títulos (##) y subtítulos (###).
-2. La secuencia didáctica DEBE sumar exactamente {duracion}.
-3. Divide las actividades en: Inicio (Motivación), Desarrollo (Construcción) y Cierre (Metacognición).
+FORMATTING INSTRUCTIONS:
+1. Use Markdown with titles (##) and subtitles (###).
+2. The didactic sequence MUST add up to exactly {duration}.
+3. Divide activities into: Beginning (Motivation), Development (Construction), and Closing (Metacognition).
 
-CONTENIDO REQUERIDO:
-## 1. Identificación
-## 2. Objetivos (General y 3 específicos)
-## 3. Contenidos (Saber, Saber hacer, Saber ser)
-## 4. Secuencia Didáctica (Detalla minuto a minuto)
-## 5. Evaluación (Define un producto tangible que el alumno entregará)
-## 6. Recursos Necesarios
+REQUIRED CONTENT:
+## 1. Identification
+## 2. Objectives (General and 3 specific)
+## 3. Content (Know, Know how, Know how to be)
+## 4. Didactic Sequence (Detail minute by minute)
+## 5. Evaluation (Define a tangible product that the student will deliver)
+## 6. Necessary Resources
 
-Sé creativo, innovador y asegúrate de que las actividades sean coherentes con el nivel {nivel}."""
-
-# Acabe de hacer un nuevo prompt el comenterario de abajo no se quien lo puso pero ya esta un poco mejor 
-# ESTE PROMPT QUE ACABAS DE VER ESTA MAL PORQUE 
-
-def prompt_silabo(tema: str, propuesta: str, aprendizaje: str, nivel: str, semestres: int) -> str:
-    return f"""Genera un Sílabo académico completo con los siguientes datos:
-
-- **Asignatura**: {tema}
-- **Enfoque**: {propuesta}
-- **Competencia central**: {aprendizaje}
-- **Nivel**: {nivel}
-- **Duración**: {semestres} semanas
-
-El sílabo debe incluir:
-1. Datos de identificación (asignatura, código, créditos, horas)
-2. Descripción general del curso
-3. Competencias y resultados de aprendizaje
-4. Unidades temáticas con contenidos por semana
-5. Metodología de enseñanza-aprendizaje
-6. Sistema de evaluación (parciales, trabajos, examen final con porcentajes)
-7. Bibliografía (básica y complementaria)
-8. Cronograma semanal detallado
-
-Usa formato markdown estructurado. Sé preciso en porcentajes y fechas."""
+Be creative, innovative, and ensure activities are coherent with the {level} level."""
 
 
-def prompt_malla(tema: str, propuesta: str, aprendizaje: str, nivel: str, ciclos: int) -> str:
-    return f"""Genera una Malla Curricular completa con los siguientes datos:
+def prompt_syllabus(topic: str, approach: str, learning: str, level: str, weeks: int) -> str:
+    return f"""Generate a complete academic Syllabus with the following data:
 
-- **Carrera/Programa**: {tema}
-- **Enfoque educativo**: {propuesta}
-- **Perfil de egreso**: {aprendizaje}
-- **Nivel**: {nivel}
-- **Ciclos/Semestres**: {ciclos}
+- **Subject**: {topic}
+- **Approach**: {approach}
+- **Core competency**: {learning}
+- **Level**: {level}
+- **Duration**: {weeks} weeks
 
-La malla debe incluir:
-1. Presentación del programa
-2. Perfil de ingreso y egreso
-3. Objetivos del programa
-4. Estructura curricular por ciclos (con materias, créditos y horas)
-5. Áreas de formación (básica, profesional, especialización, electivas)
-6. Mapa de prerrequisitos principales
-7. Carga horaria total
-8. Perfil profesional y campo laboral
+The syllabus must include:
+1. Identification data (subject, code, credits, hours)
+2. General course description
+3. Competencies and learning outcomes
+4. Thematic units with weekly content
+5. Teaching-learning methodology
+6. Evaluation system (partial exams, assignments, final exam with percentages)
+7. Bibliography (basic and complementary)
+8. Detailed weekly schedule
 
-Organiza las materias en una tabla por ciclo. Incluye créditos para cada asignatura."""
+Use structured markdown format. Be precise with percentages and dates."""
 
 
-def prompt_adaptativo(tema: str, propuesta: str, aprendizaje: str, nivel: str, duracion: str, estilo: str) -> str:
-    return f"""Genera un Plan de Clase ADAPTATIVO personalizado:
+def prompt_curriculum_map(topic: str, approach: str, learning: str, level: str, cycles: int) -> str:
+    return f"""Generate a complete Curriculum Map with the following data:
 
-- **Tema**: {tema}
-- **Propuesta**: {propuesta}  
-- **Aprendizaje esperado**: {aprendizaje}
-- **Nivel**: {nivel}
-- **Duración**: {duracion}
-- **Estilo de aprendizaje predominante**: {estilo}
+- **Career/Program**: {topic}
+- **Educational approach**: {approach}
+- **Graduate profile**: {learning}
+- **Level**: {level}
+- **Cycles/Semesters**: {cycles}
 
-Adapta el plan considerando el estilo de aprendizaje indicado:
-- Si es Visual: incluye diagramas descritos, mapas conceptuales, organizadores gráficos
-- Si es Auditivo: incluye debates, exposiciones, podcasts, discusión grupal
-- Si es Kinestésico: incluye actividades prácticas, experimentos, role-play
-- Si es Lector/Escritor: incluye análisis de textos, ensayos, investigación
+The curriculum map must include:
+1. Program presentation
+2. Entry and exit profile
+3. Program objectives
+4. Curriculum structure by cycles (with subjects, credits, and hours)
+5. Training areas (basic, professional, specialization, electives)
+6. Main prerequisites map
+7. Total workload
+8. Professional profile and job market
 
-Estructura igual que un plan de clase estándar pero con actividades específicas para ese estilo.
-Incluye una sección de "Adaptaciones para otros estilos" al final."""
+Organize subjects in a table by cycle. Include credits for each subject."""
+
+
+def prompt_adaptive(topic: str, approach: str, learning: str, level: str, duration: str, style: str) -> str:
+    return f"""Generate a personalized ADAPTIVE Lesson Plan:
+
+- **Topic**: {topic}
+- **Approach**: {approach}  
+- **Expected learning**: {learning}
+- **Level**: {level}
+- **Duration**: {duration}
+- **Predominant learning style**: {style}
+
+Adapt the plan considering the indicated learning style:
+- If Visual: include described diagrams, concept maps, graphic organizers
+- If Auditory: include debates, presentations, podcasts, group discussion
+- If Kinesthetic: include practical activities, experiments, role-play
+- If Reading/Writing: include text analysis, essays, research
+
+Structure the same as a standard lesson plan but with specific activities for that style.
+Include a section on "Adaptations for other styles" at the end."""
 
 
 # ─────────────────────────────────────────────
-# EXPORTADORES
+# EXPORTERS
 # ─────────────────────────────────────────────
 
 def markdown_to_plain(md_text: str) -> list[dict]:
-    """Convierte markdown a lista de bloques {type, text}."""
+    """Converts markdown to a list of blocks {type, text}."""
     blocks = []
     for line in md_text.split('\n'):
         line = line.rstrip()
@@ -204,7 +202,7 @@ def markdown_to_plain(md_text: str) -> list[dict]:
         elif line == '' or line == '---':
             blocks.append({'type': 'space', 'text': ''})
         else:
-            # Limpiar markdown inline
+            # Clean inline markdown
             clean = re.sub(r'\*\*(.*?)\*\*', r'\1', line)
             clean = re.sub(r'\*(.*?)\*', r'\1', clean)
             clean = re.sub(r'`(.*?)`', r'\1', clean)
@@ -214,23 +212,23 @@ def markdown_to_plain(md_text: str) -> list[dict]:
 
 
 def export_to_docx(content: str, title: str, filename: str) -> str:
-    """Exporta contenido markdown a DOCX."""
+    """Exports markdown content to DOCX."""
     if not DOCX_AVAILABLE:
-        raise ImportError("python-docx no instalado")
+        raise ImportError("python-docx not installed")
 
     doc = Document()
 
-    # Estilos básicos
+    # Basic styles
     style = doc.styles['Normal']
     style.font.name = 'Calibri'
     style.font.size = Pt(11)
 
-    # Título del documento
+    # Document title
     title_para = doc.add_heading(title, level=0)
     title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    # Fecha
-    date_para = doc.add_paragraph(f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+    # Date
+    date_para = doc.add_paragraph(f"Generated: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     date_para.runs[0].font.size = Pt(9)
     date_para.runs[0].font.color.rgb = RGBColor(128, 128, 128)
@@ -269,9 +267,9 @@ def export_to_docx(content: str, title: str, filename: str) -> str:
 
 
 def export_to_pdf(content: str, title: str, filename: str) -> str:
-    """Exporta contenido markdown a PDF con ReportLab."""
+    """Exports markdown content to PDF with ReportLab."""
     if not PDF_AVAILABLE:
-        raise ImportError("reportlab no instalado")
+        raise ImportError("reportlab not installed")
 
     path = os.path.join(OUTPUT_DIR, filename)
     doc = SimpleDocTemplate(path, pagesize=A4,
@@ -281,7 +279,7 @@ def export_to_pdf(content: str, title: str, filename: str) -> str:
     styles = getSampleStyleSheet()
     story = []
 
-    # Estilos personalizados
+    # Custom styles
     title_style = ParagraphStyle('CustomTitle',
         parent=styles['Title'],
         fontSize=20, spaceAfter=6,
@@ -319,9 +317,9 @@ def export_to_pdf(content: str, title: str, filename: str) -> str:
         fontSize=10, spaceAfter=3,
         leftIndent=20, leading=13)
 
-    # Título
+    # Title
     story.append(Paragraph(title, title_style))
-    story.append(Paragraph(f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", date_style))
+    story.append(Paragraph(f"Generated: {datetime.now().strftime('%d/%m/%Y %H:%M')}", date_style))
 
     blocks = markdown_to_plain(content)
     for block in blocks:
@@ -332,7 +330,7 @@ def export_to_pdf(content: str, title: str, filename: str) -> str:
         if not t:
             continue
 
-        # Escapar caracteres especiales para ReportLab
+        # Escape special characters for ReportLab
         t_safe = t.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
         if block['type'] == 'h1':
@@ -354,173 +352,174 @@ def export_to_pdf(content: str, title: str, filename: str) -> str:
 
 
 # ─────────────────────────────────────────────
-# RUTAS API
+# API ROUTES
 # ─────────────────────────────────────────────
-# ====================== RUTA PRINCIPAL ======================
+# ====================== MAIN ROUTE ======================
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
-    """Sirve archivos estáticos como index.html si es necesario"""
+    """Serves static files like index.html if necessary"""
     return send_from_directory('.', path)
-@app.route('/api/saludo', methods=['GET'])
-def saludo():
-    nombre = request.args.get('nombre', 'Docente')
-    hora = datetime.now().hour
-    if hora < 12:
-        saludo_txt = "Buenos días"
-    elif hora < 18:
-        saludo_txt = "Buenas tardes"
+
+@app.route('/api/greeting', methods=['GET'])
+def greeting():
+    name = request.args.get('name', 'Teacher')
+    hour = datetime.now().hour
+    if hour < 12:
+        greeting_text = "Good morning"
+    elif hour < 18:
+        greeting_text = "Good afternoon"
     else:
-        saludo_txt = "Buenas noches"
+        greeting_text = "Good evening"
 
-    prompt = f"""Da un saludo cálido y profesional a {nombre}.
-El saludo es: {saludo_txt}.
-Preséntate como EduAgent, asistente pedagógico.
-Menciona brevemente qué puedes hacer (plan de clase, sílabo, malla curricular).
-Máximo 3 oraciones. Sé amigable pero directo."""
+    prompt = f"""Give a warm and professional greeting to {name}.
+The greeting is: {greeting_text}.
+Introduce yourself as EduAgent, pedagogical assistant.
+Briefly mention what you can do (lesson plan, syllabus, curriculum map).
+Maximum 3 sentences. Be friendly but direct."""
 
-    respuesta = query_ollama(prompt, SYSTEM_BASE)
-    if respuesta.startswith("ERROR"):
-        respuesta = f"{saludo_txt}, {nombre}! Soy EduAgent, tu asistente pedagógico. Puedo ayudarte a crear planes de clase, sílabos y mallas curriculares."
+    response = query_ollama(prompt, SYSTEM_BASE)
+    if response.startswith("ERROR"):
+        response = f"{greeting_text}, {name}! I'm EduAgent, your pedagogical assistant. I can help you create lesson plans, syllabi, and curriculum maps."
 
-    return jsonify({"saludo": respuesta, "hora": saludo_txt})
+    return jsonify({"greeting": response, "time": greeting_text})
 
 
-@app.route('/api/plan-clase', methods=['POST'])
-def plan_clase():
+@app.route('/api/lesson-plan', methods=['POST'])
+def lesson_plan():
     data = request.json
-    tema = data.get('tema', '')
-    propuesta = data.get('propuesta', '')
-    aprendizaje = data.get('aprendizaje', '')
-    nivel = data.get('nivel', 'Bachillerato')
-    duracion = data.get('duracion', '60 minutos')
-    adaptativo = data.get('adaptativo', False)
-    estilo = data.get('estilo', 'Visual')
+    topic = data.get('topic', '')
+    approach = data.get('approach', '')
+    learning = data.get('learning', '')
+    level = data.get('level', 'High School')
+    duration = data.get('duration', '60 minutes')
+    adaptive = data.get('adaptive', False)
+    style = data.get('style', 'Visual')
 
-    if not tema or not propuesta or not aprendizaje:
-        return jsonify({"error": "Faltan datos requeridos"}), 400
+    if not topic or not approach or not learning:
+        return jsonify({"error": "Missing required data"}), 400
 
-    if adaptativo:
-        prompt = prompt_adaptativo(tema, propuesta, aprendizaje, nivel, duracion, estilo)
+    if adaptive:
+        prompt = prompt_adaptive(topic, approach, learning, level, duration, style)
     else:
-        prompt = prompt_plan_clase(tema, propuesta, aprendizaje, nivel, duracion)
+        prompt = prompt_lesson_plan(topic, approach, learning, level, duration)
 
-    contenido = query_ollama(prompt, SYSTEM_BASE)
+    content = query_ollama(prompt, SYSTEM_BASE)
 
-    if contenido.startswith("ERROR_OLLAMA_OFFLINE"):
-        return jsonify({"error": "Ollama no está corriendo. Inicia con: ollama serve"}), 503
+    if content.startswith("ERROR_OLLAMA_OFFLINE"):
+        return jsonify({"error": "Ollama is not running. Start with: ollama serve"}), 503
 
     return jsonify({
-        "tipo": "plan_clase",
-        "titulo": f"Plan de Clase: {tema}",
-        "contenido": contenido,
-        "adaptativo": adaptativo
+        "type": "lesson_plan",
+        "title": f"Lesson Plan: {topic}",
+        "content": content,
+        "adaptive": adaptive
     })
 
 
-@app.route('/api/silabo', methods=['POST'])
-def silabo():
+@app.route('/api/syllabus', methods=['POST'])
+def syllabus():
     data = request.json
-    tema = data.get('tema', '')
-    propuesta = data.get('propuesta', '')
-    aprendizaje = data.get('aprendizaje', '')
-    nivel = data.get('nivel', 'Universidad')
-    semanas = data.get('semanas', 16)
+    topic = data.get('topic', '')
+    approach = data.get('approach', '')
+    learning = data.get('learning', '')
+    level = data.get('level', 'University')
+    weeks = data.get('weeks', 16)
 
-    if not tema or not propuesta or not aprendizaje:
-        return jsonify({"error": "Faltan datos requeridos"}), 400
+    if not topic or not approach or not learning:
+        return jsonify({"error": "Missing required data"}), 400
 
-    prompt = prompt_silabo(tema, propuesta, aprendizaje, nivel, semanas)
-    contenido = query_ollama(prompt, SYSTEM_BASE)
+    prompt = prompt_syllabus(topic, approach, learning, level, weeks)
+    content = query_ollama(prompt, SYSTEM_BASE)
 
-    if contenido.startswith("ERROR_OLLAMA_OFFLINE"):
-        return jsonify({"error": "Ollama no está corriendo. Inicia con: ollama serve"}), 503
+    if content.startswith("ERROR_OLLAMA_OFFLINE"):
+        return jsonify({"error": "Ollama is not running. Start with: ollama serve"}), 503
 
     return jsonify({
-        "tipo": "silabo",
-        "titulo": f"Sílabo: {tema}",
-        "contenido": contenido
+        "type": "syllabus",
+        "title": f"Syllabus: {topic}",
+        "content": content
     })
 
 
-@app.route('/api/malla', methods=['POST'])
-def malla():
+@app.route('/api/curriculum-map', methods=['POST'])
+def curriculum_map():
     data = request.json
-    tema = data.get('tema', '')
-    propuesta = data.get('propuesta', '')
-    aprendizaje = data.get('aprendizaje', '')
-    nivel = data.get('nivel', 'Universidad')
-    ciclos = data.get('ciclos', 8)
+    topic = data.get('topic', '')
+    approach = data.get('approach', '')
+    learning = data.get('learning', '')
+    level = data.get('level', 'University')
+    cycles = data.get('cycles', 8)
 
-    if not tema or not propuesta or not aprendizaje:
-        return jsonify({"error": "Faltan datos requeridos"}), 400
+    if not topic or not approach or not learning:
+        return jsonify({"error": "Missing required data"}), 400
 
-    prompt = prompt_malla(tema, propuesta, aprendizaje, nivel, ciclos)
-    contenido = query_ollama(prompt, SYSTEM_BASE)
+    prompt = prompt_curriculum_map(topic, approach, learning, level, cycles)
+    content = query_ollama(prompt, SYSTEM_BASE)
 
-    if contenido.startswith("ERROR_OLLAMA_OFFLINE"):
-        return jsonify({"error": "Ollama no está corriendo. Inicia con: ollama serve"}), 503
+    if content.startswith("ERROR_OLLAMA_OFFLINE"):
+        return jsonify({"error": "Ollama is not running. Start with: ollama serve"}), 503
 
     return jsonify({
-        "tipo": "malla",
-        "titulo": f"Malla Curricular: {tema}",
-        "contenido": contenido
+        "type": "curriculum_map",
+        "title": f"Curriculum Map: {topic}",
+        "content": content
     })
 
 
-@app.route('/api/exportar', methods=['POST'])
-def exportar():
+@app.route('/api/export', methods=['POST'])
+def export():
     data = request.json
-    formato = data.get('formato', 'pdf')  # 'pdf' o 'docx'
-    titulo = data.get('titulo', 'Documento Educativo')
-    contenido = data.get('contenido', '')
-    tipo = data.get('tipo', 'documento')
+    format_type = data.get('format', 'pdf')  # 'pdf' or 'docx'
+    title = data.get('title', 'Educational Document')
+    content = data.get('content', '')
+    doc_type = data.get('type', 'document')
 
-    if not contenido:
-        return jsonify({"error": "Sin contenido para exportar"}), 400
+    if not content:
+        return jsonify({"error": "No content to export"}), 400
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    safe_title = re.sub(r'[^\w\s-]', '', titulo).strip().replace(' ', '_')[:40]
+    safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '_')[:40]
     filename = f"{safe_title}_{timestamp}"
 
     try:
-        if formato == 'docx':
+        if format_type == 'docx':
             filename += '.docx'
-            path = export_to_docx(contenido, titulo, filename)
+            path = export_to_docx(content, title, filename)
             mimetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         else:
             filename += '.pdf'
-            path = export_to_pdf(contenido, titulo, filename)
+            path = export_to_pdf(content, title, filename)
             mimetype = 'application/pdf'
 
         return send_file(path, mimetype=mimetype,
                         as_attachment=True,
                         download_name=filename)
     except ImportError as e:
-        return jsonify({"error": f"Librería no disponible: {str(e)}. Instala con pip install python-docx reportlab"}), 500
+        return jsonify({"error": f"Library not available: {str(e)}. Install with pip install python-docx reportlab"}), 500
     except Exception as e:
-        return jsonify({"error": f"Error al exportar: {str(e)}"}), 500
+        return jsonify({"error": f"Export error: {str(e)}"}), 500
 
 
-@app.route('/api/estado', methods=['GET'])
-def estado():
-    """Verifica si Ollama está disponible."""
+@app.route('/api/status', methods=['GET'])
+def status():
+    """Checks if Ollama is available."""
     try:
         resp = requests.get("http://localhost:11434/api/tags", timeout=5)
-        modelos = [m['name'] for m in resp.json().get('models', [])]
+        models = [m['name'] for m in resp.json().get('models', [])]
         return jsonify({
             "ollama": True,
-            "modelos": modelos,
-            "modelo_activo": OLLAMA_MODEL
+            "models": models,
+            "active_model": OLLAMA_MODEL
         })
     except:
         return jsonify({
             "ollama": False,
-            "modelos": [],
-            "modelo_activo": OLLAMA_MODEL
+            "models": [],
+            "active_model": OLLAMA_MODEL
         })
 
 
